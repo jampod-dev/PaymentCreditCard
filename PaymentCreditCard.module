@@ -1,0 +1,231 @@
+<?php
+
+require_once(dirname(__FILE__) . "/PaymentAbstract.php");
+
+// If your payment processor has a library, SDK, or similar, require it here.
+
+class PaymentCreditCard extends PaymentAbstract {
+	
+	public static function getModuleInfo()
+	{
+		return array(
+			"title" => "Credit Card Payments",
+			"version" => 001,
+			"summary" => "Generic payment method for sending credit card orders to a payment processor",
+			"singular" => false,
+			"autoload" => false
+			);
+	}
+
+	public function init() {
+		$this->title = $this->_("Credit Card");
+	}
+	
+
+	public function processPayment(Page $order) {
+		function renderForm() {
+			$states = array( "initial_value" => " - Select Province/State - ","AB" => "Alberta","BC" => "British Columbia","MB" => "Manitoba","NB" => "New Burnswick","NL" => "Newfoundland and Labrador","NS" => "Nova Scotia","NT" => "Northwest Territories","NU" => "Nunavut","ON" => "Ontario","PE" => "Prince Edward Island","QC" => "Quebec","SK" => "Saskatchewan","YT" => "Yukon","divider" => "---------------","AL" => "Alabama","AK" => "Alaska","AZ" => "Arizona","AR" => "Arkansas","CA" => "California","CO" => "Colorado","CT" => "Connecticut","DE" => "Delaware","DC" => "District of Columbia","FL" => "Florida","GA" => "Georgia","HI" => "Hawaii","ID" => "Idaho","IL" => "Illinois","IN" => "Indiana","IA" => "Iowa","KS" => "Kansas","KY" => "Kentucky","LA" => "Louisiana","ME" => "Maine","MD" => "Maryland","MA" => "Massachusetts","MI" => "Michigan","MN" => "Minnesota","MS" => "Mississippi","MO" => "Missouri","MT" => "Montana","NE" => "Nebraska","NV" => "Nevada","NH" => "New Hampshire","NJ" => "New Jersey","NM" => "New Mexico","NY" => "New York","NC" => "North Carolina","ND" => "North Dakota","OH" => "Ohio","OK" => "Oklahoma","OR" => "Oregon","PA" => "Pennsylvania","RI" => "Rhode Island","SC" => "South Carolina","SD" => "South Dakota","TN" => "Tennessee","TX" => "Texas","UT" => "Utah","VT" => "Vermont","VA" => "Virginia","WA" => "Washington","WV" => "West Virginia","WI" => "Wisconsin","WY" => "Wyoming");
+
+			$modules = wire("modules");
+
+			$out = "";
+
+			$form = $modules->get("InputfieldForm");
+			$form->action = "./?payment=submitted";
+			$form->method = "post";
+			$form->attr("id+name","cc_payment_form");
+
+			$field = $modules->get("InputfieldText");
+			$field->placeholder = "Name on Card";
+			$field->label = "Name on Card";
+			$field->attr("id+name","cc_name_on_card");
+			$field->required = 1;
+			$form->append($field);
+
+			$field = $modules->get("InputfieldText");
+			$field->label = "Credit Card Number";
+			$field->placeholder = "Card Number";
+			$field->attr("id+name","cc_card_number");
+			$field->required = 1;
+			$form->append($field);
+
+			$select = $modules->get("InputfieldSelect");
+			$select->label = "Expiration Month";
+			$select->attr("id+name","cc_expiration_month");
+			$select->addOption("", "Month");
+			for ($i = 1; $i < 13; ++$i)
+			{
+				$select->addOption($i, $i);
+			}
+			$select->value = "";
+			$select->required = 1;
+			$form->append($select);
+
+			$select = $modules->get("InputfieldSelect");
+			$select->label = "Expiration Year";
+			$select->attr("id+name","cc_expiration_year");
+			$select->addOption("", "Year");
+
+				// Your processor may need the full year for the expiry date; change these values if so.
+			for ($i = 14; $i < 30; ++$i)
+			{
+				$select->addOption($i, "20" . $i);
+			}
+			$select->value = "";
+			$select->required = 1;
+			$form->append($select);
+
+
+			$field = $modules->get("InputfieldText");
+			$field->label = "Card Security Number";
+			$field->attr("id+name","cc_security_number");
+			$field->required = 1;
+			$form->append($field);
+
+			$field = $modules->get("InputfieldText");
+			$field->label = "Street Address";
+			$field->attr("id+name","cc_street_address");
+			$field->required = 1;
+			$form->append($field);
+
+			$field = $modules->get("InputfieldText");
+			$field->label = "Zip / Postal Code";
+			$field->attr("id+name","cc_postalzip");
+			$field->required = 1;
+			$form->append($field);
+
+			$select = $modules->get("InputfieldSelect");
+			$select->label = "State / Province";
+			$select->attr("id+name","cc_state_province");
+			foreach ($states as $key=>$value)
+			{
+				$select->addOption($key, $value);
+			}
+			$select->required = 1;
+			$form->append($select);
+
+			$submit = $modules->get("InputfieldSubmit");
+			$submit->attr("value","submit");
+			$submit->attr("id+name","submit");
+			$form->append($submit);
+
+			$out .= $form->render();
+
+			echo ($out);
+		}
+
+    	// Validate the credit card number. Use your own validation method if preferred, or let your payment processor handle validation
+
+		function validate_credit_card($number)
+		{
+
+			$doubledNumber  = "";
+			$odd  = false;
+
+			for($i = strlen($number)-1; $i >=0; $i--)
+			{
+				$doubledNumber .= ($odd) ? $number[$i] * 2 : $number[$i];
+				$odd	  = !$odd;
+			}
+
+			$sum = 0;
+
+			for($i = 0; $i < strlen($doubledNumber); $i++)
+				$sum += (int) $doubledNumber[$i];
+
+			if (($sum % 10 ==0) && ($sum != 0))
+			{
+				return true;
+			}
+
+			else
+			{
+				return false;
+			}
+		} 
+
+
+		$total = 0; 
+		$error = false;
+
+			// Calculate the total amount we need to submit to the payment processor
+
+		foreach($order->children("check_access=0") as $p) 
+		{
+			$item_total = $p->sc_qty * $p->sc_price;
+			$total = $total + $item_total;
+
+		}
+
+		if ($this->input->get->payment == "submitted")
+		{
+			$credit_card_info = array();
+
+			foreach ($this->input->post as $key=>$value)
+			{
+				if (($value == ''))
+				{
+					$error = true;
+				}
+			}
+
+			$name_on_card = wire('sanitizer')->text($this->input->post->cc_name_on_card);
+			$credit_card_number = wire('sanitizer')->text($this->input->post->cc_card_number);
+			$expiration_year = wire('sanitizer')->text($this->input->post->cc_expiration_year);
+			$expiration_month = wire('sanitizer')->text($this->input->post->cc_expiration_month);
+
+			$ccv = wire('sanitizer')->text($this->input->post->cc_security_number);
+
+			$street_address = wire('sanitizer')->text($this->input->post->cc_street_address);
+			$state = wire('sanitizer')->text($this->input->post->cc_state_province);
+
+			$validate_cc = validate_credit_card($credit_card_number);
+			if ($validate_cc !== true || $error == true)
+			{
+				echo 'Please make sure the card information is valid';
+				renderForm();
+			}
+			else 
+			{
+				$credit_card_info["name_on_card"] = $name_on_card;
+				$credit_card_info["credit_card_number"] = $credit_card_number;
+				$credit_card_info["ccv"] = $ccv;
+				$credit_card_info["expiration_month"] = $expiration_month;
+				$credit_card_info["expiration_year"] = $expiration_year;
+				$credit_card_info["address"] = $street_address;
+				$credit_card_info["state"] = $state;
+				$credit_card_info["postalzip"] = $postalzip;
+
+				$total = $total;
+
+					/*Put the code for sending $credit_card_info and $total to the payment processor here, something like this:
+
+					$result = $payment->process($credit_card_info, $total);
+
+					Change the following condition to match whatever your payment processor returns.
+					*/
+
+					if ($result == false || $result == "Declined")
+					{
+						echo "We were unable to process your transaction. Please double-check your information and try again.";
+					}
+					else 
+					{
+
+						$order->setOutputFormatting(false);
+						$order->sc_paid = time();
+
+						$order->removeStatus(Page::statusUnpublished);
+						$order->save();
+						
+						$this->session->redirect($this->completedUrl);	
+
+					}
+				}
+			}
+			else 
+			{
+				renderForm();
+			}
+		}
+	}
