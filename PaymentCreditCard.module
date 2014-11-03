@@ -12,6 +12,7 @@ class PaymentCreditCard extends PaymentAbstract {
 			"title" => "Credit Card Payments",
 			"version" => 001,
 			"summary" => "Generic payment method for sending credit card orders to a payment processor",
+			"requires" => "ShoppingCart",
 			"singular" => false,
 			"autoload" => false
 			);
