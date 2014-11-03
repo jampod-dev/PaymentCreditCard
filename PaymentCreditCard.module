@@ -12,9 +12,12 @@ class PaymentCreditCard extends PaymentAbstract {
 			"title" => "Credit Card Payments",
 			"version" => 001,
 			"summary" => "Generic payment method for sending credit card orders to a payment processor",
-			"requires" => "ShoppingCart",
 			"singular" => false,
-			"autoload" => false
+			"autoload" => false,
+			'requires' => array(
+				"ShoppingCart",
+				"ShoppingCheckout"
+			)
 			);
 	}
 
@@ -79,18 +82,21 @@ class PaymentCreditCard extends PaymentAbstract {
 
 			$field = $modules->get("InputfieldText");
 			$field->label = "Card Security Number";
+			$field->placeholder = "Card Security Number";
 			$field->attr("id+name","cc_security_number");
 			$field->required = 1;
 			$form->append($field);
 
 			$field = $modules->get("InputfieldText");
 			$field->label = "Street Address";
+			$field->placeholder = "Address";
 			$field->attr("id+name","cc_street_address");
 			$field->required = 1;
 			$form->append($field);
 
 			$field = $modules->get("InputfieldText");
 			$field->label = "Zip / Postal Code";
+			$field->placeholder = "Zip / Postal Code";
 			$field->attr("id+name","cc_postalzip");
 			$field->required = 1;
 			$form->append($field);

@@ -1,7 +1,7 @@
 PaymentCreditCard
 =================
 
-A generic credit card payment method for ProcessWire Shop. 
+A generic credit card payment method for ProcessWire Shop. In keeping with ProcessWire's philosophy, it generates minimal markup and styling so you can easily adapt the payment form to your site's design.
 
 ###Use:
 
